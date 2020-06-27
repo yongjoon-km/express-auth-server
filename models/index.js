@@ -12,9 +12,5 @@ db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
 db.User = require('./user')(sequelize, Sequelize)
-db.Token = require('./token')(sequelize, Sequelize)
-
-db.User.hasOne(db.Token, { foreignKey: 'id', sourceKey: 'id' })
-db.Token.belongsTo(db.User, { foreignKey: 'id', targetKey: 'id' })
 
 module.exports = db;

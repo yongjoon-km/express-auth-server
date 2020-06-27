@@ -5,7 +5,6 @@ const bcrypt = require('bcrypt')
 const { verifyToken } = require('../middleware')
 
 const User = require('../models').User
-const Token = require('../models').Token
 
 const router = express.Router()
 
@@ -38,40 +37,21 @@ router.post('/register', async(req, res) => {
   }
 })
 
-router.get('/refresh', verifyToken, async(req, res) => {
-  let { refreshToken } = req.headers.authorization
-  const { id } = req.decoded
+router.get('/refresh', verifyToken, (req, res) => {
+  let refreshToken = req.headers.authorization
+  const { id, exp } = req.decoded
 
-  try {
-    const exToken = await Token.findOne({ where: { id: id } })
-    if (await bcrypt.compare(refreshToken, exToken.token)) {
-      const token = jwt.sign({ id: id }, process.env.JWT_PASSWORD, { expiresIn: '15m' })
-      const dateNow = new Date();
+  const accessToken = jwt.sign({ id: id }, process.env.JWT_PASSWORD, { expiresIn: '15m' })
 
-      if (refreshToken.exp + 30 * 24 * 60 * 1000 < dateNow.getTime() / 1000) {
-        refreshToken = jwt.sign({ id: id }, process.env.JWT_PASSWORD, { expiresIn: '365d' })
-        Token.update({
-          token: refreshToken,
-        }, {
-          where: { id: id }
-        })
-      }
-
-      res.json({
-        message: 'refresh success',
-        token,
-        refreshToken
-      })
-
-    } else {
-      res.status(400).json({
-        message: 'bad refresh token'
-      })
-    }
-  } catch (err) {
-    console.log(err)
-    res.send(err)
+  // TODO: certain condition update refresh token
+  if (true) {
+    refreshToken = jwt.sign({ id: id }, process.env.JWT_PASSWORD, { expiresIn: '60d' })
   }
+  return res.json({
+    message: 'refresh success',
+    accessToken,
+    refreshToken
+  })
 
 })
 
@@ -83,31 +63,25 @@ router.post('/login', async(req, res) => {
       const user = await User.findOne({ where: { email: email } });
 
       if (await bcrypt.compare(password, user.password)) {
-        const token = jwt.sign({ id: user.id }, process.env.JWT_PASSWORD, { expiresIn: '15m' })
-        const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_PASSWORD, { expiresIn: '365d' })
+        const accessToken = jwt.sign({ id: user.id }, process.env.JWT_PASSWORD, { expiresIn: '15m' })
+        const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_PASSWORD, { expiresIn: '1d' })
 
-        // save refresh token to database
-        const hashedToken = await bcrypt.hash(refreshToken, 10);
-        await Token.create({ id: id, token: hashedToken })
-
-        res.json({
+        return res.json({
           message: 'login success',
-          token,
+          accessToken,
           refreshToken
-        });
+        })
+
       } else {
-        res.status(403).send('password incorrect')
+        return res.status(403).send('password incorrect')
       }
     } catch (err) {
-      res.status(404).send('user not found')
+      return res.status(404).send('user not found')
     }
   } else {
-    res.status(400).send('bad request')
+    return res.status(400).send('bad request')
   }
 })
 
-router.get('/logout', (req, res) => {
-
-})
 
 module.exports = router
