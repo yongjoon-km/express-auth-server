@@ -8,6 +8,15 @@ const User = require('../models').User
 
 const router = express.Router()
 
+router.post('/check', verifyToken, (req, res) => {
+  const { id, user } = req.decoded;
+  console.log('checking... user');
+  console.log(req.headers);
+  console.log(req.headers.authorization);
+  console.log(req.body);
+  return res.json({ userId: id, user: user, message: 'check success' })
+})
+
 router.post('/register', async(req, res) => {
   const { username, email, password } = req.body
 
@@ -39,13 +48,13 @@ router.post('/register', async(req, res) => {
 
 router.get('/refresh', verifyToken, (req, res) => {
   let refreshToken = req.headers.authorization
-  const { id, exp } = req.decoded
+  const { id, user, exp } = req.decoded
 
   const accessToken = jwt.sign({ id: id }, process.env.JWT_PASSWORD, { expiresIn: '15m' })
 
   // TODO: certain condition update refresh token
   if (true) {
-    refreshToken = jwt.sign({ id: id }, process.env.JWT_PASSWORD, { expiresIn: '60d' })
+    refreshToken = jwt.sign({ id: id, user: user }, process.env.JWT_PASSWORD, { expiresIn: '60d' })
   }
   return res.json({
     message: 'refresh success',
@@ -61,10 +70,10 @@ router.post('/login', async(req, res) => {
   if (email && password) {
     try {
       const user = await User.findOne({ where: { email: email } });
-
+      console.log(user);
       if (await bcrypt.compare(password, user.password)) {
-        const accessToken = jwt.sign({ id: user.id }, process.env.JWT_PASSWORD, { expiresIn: '15m' })
-        const refreshToken = jwt.sign({ id: user.id }, process.env.JWT_PASSWORD, { expiresIn: '1d' })
+        const accessToken = jwt.sign({ id: user.id, user: user.name }, process.env.JWT_PASSWORD, { expiresIn: '15m' })
+        const refreshToken = jwt.sign({ id: user.id, user: user.name }, process.env.JWT_PASSWORD, { expiresIn: '1d' })
 
         return res.json({
           message: 'login success',
